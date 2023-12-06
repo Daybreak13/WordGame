@@ -31,6 +31,10 @@ namespace WordGame.Editors {
                 gameManager.GetWordContainers();
             }
 
+            if (GUILayout.Button("Set Font")) {
+                gameManager.SetFont();
+            }
+
             if (EditorGUI.EndChangeCheck()) {
                 serializedObject.ApplyModifiedProperties();
                 SceneView.RepaintAll();

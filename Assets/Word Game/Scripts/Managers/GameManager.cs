@@ -22,42 +22,106 @@ namespace WordGame {
     /// Game manager
     /// </summary>
     public class GameManager : Singleton<GameManager> {
+        [field: Header("Game Parameters")]
+
+        /// <summary>
+        /// The current word
+        /// </summary>
+        [field: Tooltip("The current word")]
+        [field: SerializeField] public string CurrentWord { get; protected set; }
+        /// <summary>
+        /// The number of guesses
+        /// </summary>
+        [field: Tooltip("The number of guesses")]
+        [field: MMReadOnly]
+        [field: SerializeField] public int CurrentGuesses { get; protected set; }
+        /// <summary>
+        /// The max number of guesses
+        /// </summary>
+        [field: Tooltip("The max number of guesses")]
+        [field: SerializeField] public int MaxGuesses { get; protected set; } = 20;
         /// <summary>
         /// The current word solution length
         /// </summary>
         [field: Tooltip("The current word solution length")]
         [field: SerializeField] public int CurrentWordLength { get; protected set; } = 4;
         /// <summary>
-        /// The error message container
+        /// The font to use for all text
         /// </summary>
-        [field: Tooltip("The error message container")]
-        [field: SerializeField] public CanvasGroup ErrorMessageContainer { get; protected set; }
-        /// <summary>
-        /// The error message text
-        /// </summary>
-        [field: Tooltip("The error message text")]
-        [field: SerializeField] public TextMeshProUGUI ErrorMessageText { get; protected set; }
-        /// <summary>
-        /// The game won container
-        /// </summary>
-        [field: Tooltip("The game won container")]
-        [field: SerializeField] public GameObject GameWonContainer { get; protected set; }
-        /// <summary>
-        /// The game won text
-        /// </summary>
-        [field: Tooltip("The game won text")]
-        [field: SerializeField] public TextMeshProUGUI GameWonText { get; protected set; }
+        [field: Tooltip("The font to use for all text")]
+        [field: SerializeField] public TMP_FontAsset TextFont { get; protected set; }
 
-        [field: Header("Canvas Groups")]
+        [field: Header("Color Coding")]
 
+        /// <summary>
+        /// The color to use for incorrect letters
+        /// </summary>
+        [field: Tooltip("The color to use for incorrect letters")]
+        [field: SerializeField] public Color WrongColor { get; protected set; }
+        /// <summary>
+        /// The color to use for correct letters
+        /// </summary>
+        [field: Tooltip("The color to use for correct letters")]
+        [field: SerializeField] public Color RightColor { get; protected set; }
+
+        [field: Header("Game Over")]
+
+        /// <summary>
+        /// The game over text
+        /// </summary>
+        [field: Tooltip("The game over text")]
+        [field: SerializeField] public TextMeshProUGUI GameOverText { get; protected set; }
+        /// <summary>
+        /// The game solution text
+        /// </summary>
+        [field: Tooltip("The game solution text")]
+        [field: SerializeField] public TextMeshProUGUI SolutionText { get; protected set; }
+        /// <summary>
+        /// The text displaying number of attempts this game
+        /// </summary>
+        [field: Tooltip("The text displaying number of attempts this game")]
+        [field: SerializeField] public TextMeshProUGUI AttemptsText { get; protected set; }
+        /// <summary>
+        /// The game over message
+        /// </summary>
+        [field: Tooltip("The game over message")]
+        [field: SerializeField] public string GameOverMessage { get; protected set; }
+        /// <summary>
+        /// The game won message
+        /// </summary>
+        [field: Tooltip("The game won message")]
+        [field: SerializeField] public string GameWonMessage { get; protected set; }
+
+        [field: Header("Canvases and Groups")]
+
+        /// <summary>
+        /// The system (menu) canvas
+        /// </summary>
+        [field: Tooltip("The system (menu) canvas")]
+        [field: SerializeField] public GameObject SystemCanvas { get; protected set; }
         /// <summary>
         /// Keyboard canvas group
         /// </summary>
         [field: Tooltip("Keyboard canvas group")]
         [field: SerializeField] public CanvasGroup KeyboardCanvasGroup { get; protected set; }
+        /// <summary>
+        /// Game over canvas group
+        /// </summary>
+        [field: Tooltip("Game over canvas group")]
+        [field: SerializeField] public CanvasGroup GameOverCanvasGroup { get; protected set; }
+        /// <summary>
+        /// The error message canvas group
+        /// </summary>
+        [field: Tooltip("The error message canvas group")]
+        [field: SerializeField] public CanvasGroup ErrorMessageCanvasGroup { get; protected set; }
 
         [field: Header("Error Messages")]
 
+        /// <summary>
+        /// The error message text
+        /// </summary>
+        [field: Tooltip("The error message text")]
+        [field: SerializeField] public TextMeshProUGUI ErrorMessageText { get; protected set; }
         /// <summary>
         /// The error message fader duration
         /// </summary>
@@ -78,12 +142,6 @@ namespace WordGame {
 
         [field: Header("Score")]
 
-        /// <summary>
-        /// The number of guesses
-        /// </summary>
-        [field: Tooltip("The number of guesses")]
-        [field: MMReadOnly]
-        [field: SerializeField] public int CurrentGuesses { get; protected set; }
         /// <summary>
         /// The number of guesses
         /// </summary>
@@ -141,24 +199,6 @@ namespace WordGame {
         [field: Tooltip("List of all words")]
         [field: SerializeField] public List<string> AllWordsList { get; protected set; } = new();
 
-        [field: Header("Current Word")]
-
-        /// <summary>
-        /// The current word
-        /// </summary>
-        [field: Tooltip("The current word")]
-        [field: SerializeField] public string CurrentWord { get; protected set; }
-        /// <summary>
-        /// The color to use for incorrect letters
-        /// </summary>
-        [field: Tooltip("The color to use for incorrect letters")]
-        [field: SerializeField] public Color WrongColor { get; protected set; }
-        /// <summary>
-        /// The color to use for correct letters
-        /// </summary>
-        [field: Tooltip("The color to use for correct letters")]
-        [field: SerializeField] public Color RightColor { get; protected set; }
-
         [field: Header("File Paths")]
 
         [field: SerializeField] public string ValidWordsFileName { get; protected set; }
@@ -166,6 +206,8 @@ namespace WordGame {
 
         [field: Header("Debug")]
 
+        /// If enabled, some info will be printed to console
+        [field: Tooltip("If enabled, some info will be printed to console")]
         [field: SerializeField] public bool DebugMode { get; protected set; }
 
         public Dictionary<string, KeyboardButtonController> KeyboardDictionary { get; protected set; } = new();
@@ -175,6 +217,7 @@ namespace WordGame {
         protected Dictionary<string, string> AllWordsDictionary = new();
 
         protected StringBuilder _sb = new();
+        protected StringBuilder _guessesSb = new();
         protected int _correctLetterCount;
         protected Stack<KeyboardButtonController> _letterStack = new();
         protected int _currentContainerIndex;
@@ -209,10 +252,10 @@ namespace WordGame {
                 AllWordsDictionary.TryAdd(word, word);
             }
 
-            if (ErrorMessageContainer == null) {
-                ErrorMessageContainer = ErrorMessageText.transform.parent.gameObject.GetComponent<CanvasGroup>();
+            if (ErrorMessageCanvasGroup == null) {
+                ErrorMessageCanvasGroup = ErrorMessageText.transform.parent.gameObject.GetComponent<CanvasGroup>();
             }
-            ErrorMessageContainer.gameObject.SetActive(false);
+            ErrorMessageCanvasGroup.gameObject.SetActive(false);
 
             if (PreviousWordContainers.Count == 0) {
                 GetWordContainers();
@@ -220,10 +263,13 @@ namespace WordGame {
             foreach (WordContainer container in PreviousWordContainers) {
                 container.gameObject.SetActive(false);
             }
-
             foreach (KeyboardButtonController controller in KeyboardList) {
                 KeyboardDictionary.Add(controller.Key, controller);
             }
+
+            GameOverCanvasGroup.gameObject.SetActive(false);
+
+            CurrentGuessesText.text = BuildCurrentGuessesText(0);
 
             if (!DebugMode) {
                 SetNewWord();
@@ -268,6 +314,17 @@ namespace WordGame {
             foreach (Transform child in WordContainerContent.transform) {
                 PreviousWordContainers.Add(child.GetComponent<WordContainer>());
             }
+            EditorUtility.SetDirty(this);
+        }
+
+        /// <summary>
+        /// Sets the font of every TextMeshProUGUI element in the scene
+        /// </summary>
+        public virtual void SetFont() {
+            TextMeshProUGUI[] tmps = FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (TextMeshProUGUI tmp in tmps) {
+                tmp.font = TextFont;
+            }
         }
 
         /// <summary>
@@ -281,6 +338,7 @@ namespace WordGame {
                 KeyboardList.Add(controller);
                 //KeyboardDictionary.Add(controller.Key, controller);
             }
+            EditorUtility.SetDirty(this);
         }
 
         /// <summary>
@@ -338,16 +396,35 @@ namespace WordGame {
 
             // If it is the solution, win the game and return
             if (CurrentWord.Equals(word, System.StringComparison.OrdinalIgnoreCase)) {
-                CurrentGuessesText.text = (++CurrentGuesses).ToString();
+                CurrentGuessesText.text = BuildCurrentGuessesText(++CurrentGuesses);
                 foreach (char c in word) {
                     LetterColorEvent.Trigger(c.ToString(), TileType.Right);
                 }
-                GameWon();
+                GameOver(true);
                 return;
             }
 
             // Valid non-solution word entered
             ValidWordEntered(word);
+        }
+
+        /// <summary>
+        /// Opens up the menu
+        /// </summary>
+        public virtual void OpenMenu() {
+            SystemCanvas.SetActive(true);
+        }
+
+        public virtual void CloseMenu() {
+            SystemCanvas.SetActive(false);
+
+        }
+
+        /// <summary>
+        /// Player manually triggers a game over
+        /// </summary>
+        public virtual void GiveUp() {
+            GameOver(false);
         }
 
         /// <summary>
@@ -357,24 +434,14 @@ namespace WordGame {
             PreviousWordContainers[_currentContainerIndex].gameObject.SetActive(true);
             PreviousWordContainers[_currentContainerIndex].SetScore(_correctLetterCount);
 
-            //for (int i = 0; i < CurrentWordContainer.Tiles.Count; i++) {
-            //    string txt = CurrentWordContainer.Tiles[i].Text.text;   // Current letter
-            //    PreviousWordContainers[_currentContainerIndex].Tiles[i].Text.text = txt;
-            //    // Color the tile of the new word (if applicable)
-            //    PreviousWordContainers[_currentContainerIndex].AddTile(txt, KeyboardDictionary[txt].CurrentTileType);
-            //    if (KeyboardDictionary[txt].CurrentTileType == TileType.Wrong) {
-            //        PreviousWordContainers[_currentContainerIndex].IncrementWrongCount();
-            //    }
-            //    if (KeyboardDictionary[txt].CurrentTileType == TileType.Right) {
-            //        PreviousWordContainers[_currentContainerIndex].IncrementMarkedCount();
-            //    }
-            //}
-
-            //_currentContainerIndex++;
-
             StartCoroutine(InitializePreviousWordContainerCo(_currentContainerIndex));
         }
 
+        /// <summary>
+        /// Wait a frame to set up previous word container so that there are no conflicts with setting tile colors
+        /// </summary>
+        /// <param name="idx"></param>
+        /// <returns></returns>
         protected virtual IEnumerator InitializePreviousWordContainerCo(int idx) {
             StringBuilder sb = new();
             string str;
@@ -447,37 +514,27 @@ namespace WordGame {
         /// </summary>
         /// <returns></returns>
         protected virtual IEnumerator ErrorMessageFader() {
-            ErrorMessageContainer.alpha = 0f;
-            ErrorMessageContainer.gameObject.SetActive(true);
+            ErrorMessageCanvasGroup.alpha = 0f;
+            ErrorMessageCanvasGroup.gameObject.SetActive(true);
 
             float elapsedTime = 0f;
             while (elapsedTime < 0.2f) {
                 elapsedTime += Time.deltaTime;
-                ErrorMessageContainer.alpha = Mathf.Lerp(0f, 1f, elapsedTime / 0.2f);
+                ErrorMessageCanvasGroup.alpha = Mathf.Lerp(0f, 1f, elapsedTime / 0.2f);
                 yield return null;
             }
-            ErrorMessageContainer.alpha = 1f;
+            ErrorMessageCanvasGroup.alpha = 1f;
 
             yield return new WaitForSeconds(ErrorMessageDuration);
 
             elapsedTime = 0f;
             while (elapsedTime < 1f) {
                 elapsedTime += Time.deltaTime;
-                ErrorMessageContainer.alpha = Mathf.Lerp(1f, 0f, elapsedTime / 1f);
+                ErrorMessageCanvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsedTime / 1f);
                 yield return null;
             }
 
-            ErrorMessageContainer.gameObject.SetActive(false);
-        }
-
-        /// <summary>
-        /// When game is won, set the Game Won container active
-        /// </summary>
-        protected virtual void GameWon() {
-            KeyboardCanvasGroup.gameObject.SetActive(false);
-            GameWonContainer.SetActive(true);
-            GameRunning = false;
-            PreviousWordList.Clear();
+            ErrorMessageCanvasGroup.gameObject.SetActive(false);
         }
 
         /// <summary>
@@ -519,12 +576,21 @@ namespace WordGame {
 
             ResetKeyboard(false);
 
-            CurrentGuessesText.text = (++CurrentGuesses).ToString();
+            CurrentGuessesText.text = BuildCurrentGuessesText(++CurrentGuesses);
             StartCoroutine(ForceScrollDown());
+
+            // If we have exceeded max guesses, trigger game over
+            if (CurrentGuesses == MaxGuesses) {
+                GameOver(false);
+            }
 
             _correctLetterCount = 0;
         }
 
+        /// <summary>
+        /// Forces the scroller to the bottom of the content
+        /// </summary>
+        /// <returns></returns>
         protected virtual IEnumerator ForceScrollDown() {
             yield return new WaitForEndOfFrame();
             Canvas.ForceUpdateCanvases();
@@ -549,20 +615,26 @@ namespace WordGame {
             }
         }
 
+        /// <summary>
+        /// What happens when the continue button is pressed
+        /// </summary>
         public virtual void ContinuePressed() {
             ContinueGame();
         }
 
+        /// <summary>
+        /// Continues the game
+        /// </summary>
         protected virtual void ContinueGame() {
             GameRunning = true;
             KeyboardCanvasGroup.gameObject.SetActive(true);
-            GameWonContainer.SetActive(false);
+            GameOverCanvasGroup.gameObject.SetActive(false);
             foreach (WordContainer container in PreviousWordContainers) {
                 container.gameObject.SetActive(false);
                 container.ResetContainer();
             }
             CurrentGuesses = 0;
-            CurrentGuessesText.text = CurrentGuesses.ToString();
+            CurrentGuessesText.text = BuildCurrentGuessesText(0);
 
             _currentContainerIndex = 0;
             CurrentWordContainer.ResetContainer();
@@ -570,9 +642,48 @@ namespace WordGame {
             ResetKeyboard(true);
         }
 
+        /// <summary>
+        /// What to do when game ends
+        /// If game was won, set the Game Won container active
+        /// </summary>
+        /// <param name="won">Was the game won?</param>
+        protected virtual void GameOver(bool won) {
+            EventSystem.current.SetSelectedGameObject(null);
+
+            AttemptsText.text = AttemptsText.text.Remove(0, 1).Insert(0, CurrentGuesses.ToString());
+            SolutionText.text = CurrentWord.ToUpper();
+            GameOverCanvasGroup.gameObject.SetActive(true);
+            GameOverCanvasGroup.gameObject.SetActive(true);
+            GameRunning = false;
+            PreviousWordList.Clear();
+
+            // If we won
+            if (won) {
+                GameOverText.text = GameWonMessage;
+            }
+            // If we lost/gave up
+            else {
+                GameOverText.text = GameOverMessage;
+            }
+        }
+
+        /// <summary>
+        /// Gets and sets up a new word to guess
+        /// </summary>
         protected virtual void SetNewWord() {
             int idx = Random.Range(0, ValidWordsList.Count);
             CurrentWord = ValidWordsList[idx];
+        }
+
+        /// <summary>
+        /// Returns a string to put in current guesses text
+        /// </summary>
+        protected virtual string BuildCurrentGuessesText(int currentGuesses) {
+            _guessesSb.Clear();
+            _guessesSb.Append((currentGuesses).ToString());
+            _guessesSb.Append("/");
+            _guessesSb.Append(MaxGuesses.ToString());
+            return _guessesSb.ToString();
         }
 
     }

@@ -108,6 +108,28 @@ public partial class @WordGameInputActions: IInputActionCollection2, IDisposable
                     ""action"": ""AnyKey"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""fbca47f2-b1be-4be8-ad16-c4aaf6942396"",
+                    ""path"": ""<Touchscreen>/touch*/press"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Touch"",
+                    ""action"": ""Click"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""f11cd600-41e1-4c0d-9d2c-0d98f3e43571"",
+                    ""path"": ""<Touchscreen>/touch*/position"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Touch"",
+                    ""action"": ""Point"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -124,6 +146,17 @@ public partial class @WordGameInputActions: IInputActionCollection2, IDisposable
                 },
                 {
                     ""devicePath"": ""<Mouse>"",
+                    ""isOptional"": false,
+                    ""isOR"": false
+                }
+            ]
+        },
+        {
+            ""name"": ""Touch"",
+            ""bindingGroup"": ""Touch"",
+            ""devices"": [
+                {
+                    ""devicePath"": ""<Touchscreen>"",
                     ""isOptional"": false,
                     ""isOR"": false
                 }
@@ -271,6 +304,15 @@ public partial class @WordGameInputActions: IInputActionCollection2, IDisposable
         {
             if (m_KeyboardMouseSchemeIndex == -1) m_KeyboardMouseSchemeIndex = asset.FindControlSchemeIndex("Keyboard&Mouse");
             return asset.controlSchemes[m_KeyboardMouseSchemeIndex];
+        }
+    }
+    private int m_TouchSchemeIndex = -1;
+    public InputControlScheme TouchScheme
+    {
+        get
+        {
+            if (m_TouchSchemeIndex == -1) m_TouchSchemeIndex = asset.FindControlSchemeIndex("Touch");
+            return asset.controlSchemes[m_TouchSchemeIndex];
         }
     }
     public interface IUIActions

@@ -49,9 +49,12 @@ namespace WordGame {
                 }
             }
 
+            // If the key pressed was a letter
             if (ctrl.name.Length == 1) {
                 char[] charArray = ctrl.name.ToCharArray();
-                GameManager.Instance.PressKey(charArray[0].ToString().ToUpper(), null);
+                if (char.IsLetter(charArray[0])) {
+                    GameManager.Instance.PressKey(charArray[0].ToString().ToUpper(), null);
+                }
             }
         }
 

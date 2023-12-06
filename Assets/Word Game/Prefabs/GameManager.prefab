@@ -1,0 +1,133 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5504974413205490249
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5504974413205490247}
+  - component: {fileID: 5504974413205490248}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5504974413205490247
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5504974413205490249}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5504974413205490248
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5504974413205490249}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48231bb257618cd4889e704ece37c917, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <CurrentWord>k__BackingField: file
+  <CurrentGuesses>k__BackingField: 0
+  <MaxGuesses>k__BackingField: 20
+  <CurrentWordLength>k__BackingField: 4
+  <TextFont>k__BackingField: {fileID: 11400000, guid: 5305fc9ff215f594b88c90be7da7976f, type: 2}
+  <WrongColor>k__BackingField: {r: 0.72156864, g: 0, b: 0, a: 1}
+  <RightColor>k__BackingField: {r: 0.0975512, g: 0.6792453, b: 0, a: 1}
+  <GameOverText>k__BackingField: {fileID: 0}
+  <SolutionText>k__BackingField: {fileID: 0}
+  <AttemptsText>k__BackingField: {fileID: 0}
+  <GameOverMessage>k__BackingField: Game over!
+  <GameWonMessage>k__BackingField: You won!
+  <SystemCanvas>k__BackingField: {fileID: 0}
+  <KeyboardCanvasGroup>k__BackingField: {fileID: 0}
+  <GameOverCanvasGroup>k__BackingField: {fileID: 0}
+  <ErrorMessageCanvasGroup>k__BackingField: {fileID: 0}
+  <ErrorMessageText>k__BackingField: {fileID: 0}
+  <ErrorMessageDuration>k__BackingField: 1.7
+  <InvalidWordMessage>k__BackingField: Invalid word!
+  <AlreadyGuessedMessage>k__BackingField: Word has already been guessed!
+  <CurrentGuessesText>k__BackingField: {fileID: 0}
+  <WordContainerPrefab>k__BackingField: {fileID: 5306216704753413088, guid: 21ea52a726c9f08429dd6f3e7c6916ad, type: 3}
+  <CurrentWordContainer>k__BackingField: {fileID: 0}
+  <WordContainerContent>k__BackingField: {fileID: 0}
+  <Scroller>k__BackingField: {fileID: 0}
+  <PreviousWordContainers>k__BackingField:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  <KeyboardList>k__BackingField:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  <PreviousWordList>k__BackingField: []
+  <ValidWordsList>k__BackingField: []
+  <AllWordsList>k__BackingField: []
+  <ValidWordsFileName>k__BackingField: ValidWordsList.txt
+  <AllWordsFileName>k__BackingField: AllCompleteSpellcheckedFiltered.txt
+  <DebugMode>k__BackingField: 0
