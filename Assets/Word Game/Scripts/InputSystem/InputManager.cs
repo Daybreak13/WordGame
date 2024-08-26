@@ -41,12 +41,8 @@ namespace WordGame {
                 GameManager.Instance.PressKey("DEL", null);
             }
 
-            if (ctrl.name.Equals("enter", StringComparison.OrdinalIgnoreCase)) {
-                if (GameManager.Instance.GameRunning) {
-                    GameManager.Instance.PressKey("ENT", null);
-                } else {
-                    GameManager.Instance.ContinuePressed();
-                }
+            if (ctrl.name.Equals("enter", StringComparison.OrdinalIgnoreCase) || ctrl.name.Equals("submit", StringComparison.OrdinalIgnoreCase)) {
+                GameManager.Instance.PressKey("ENT", null);
             }
 
             // If the key pressed was a letter
@@ -58,13 +54,19 @@ namespace WordGame {
             }
         }
 
+        protected virtual void CancelPressed(InputAction.CallbackContext ctx) {
+            
+        }
+
         protected virtual void OnEnable() {
             InputActions.Enable();
+            InputActions.UI.Cancel.performed += CancelPressed;
             m_EventListener = InputSystem.onAnyButtonPress.Call(KeyPressed);
         }
 
         protected virtual void OnDisable() {
             InputActions.Disable();
+            InputActions.UI.Cancel.performed -= CancelPressed;
             m_EventListener.Dispose();
         }
     }

@@ -21,6 +21,8 @@ namespace WordGame {
 
         public bool Enabled { get; protected set; } = true;
 
+        protected bool _initialTextState;
+
         /// <summary>
         /// Get references
         /// </summary>
@@ -35,6 +37,7 @@ namespace WordGame {
             if (Key == null && Text != null) {
                 Key = Text.text;
             }
+            _initialTextState = Text.gameObject.activeSelf;
         }
 
         /// <summary>
@@ -51,6 +54,7 @@ namespace WordGame {
         public virtual void ResetKey() {
             Background.color = _originalColor;
             CurrentTileType = TileType.Neutral;
+            EnableKey();
         }
 
         /// <summary>
@@ -62,7 +66,7 @@ namespace WordGame {
 
         public virtual void EnableKey() {
             ButtonComponent.interactable = true;
-            Text.gameObject.SetActive(true);
+            Text.gameObject.SetActive(_initialTextState);
             Enabled = true;
         }
 

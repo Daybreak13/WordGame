@@ -26,9 +26,11 @@ namespace WordGame {
         public TileType CurrentTileType { get; protected set; } = TileType.Neutral;
 
         protected Color _originalColor;
+        protected Color _originalFontColor;
 
         protected virtual void Awake() {
             _originalColor = Background.color;
+            _originalFontColor = Text.color;
         }
 
         public virtual void SetParent(WordContainer container) {
@@ -43,6 +45,7 @@ namespace WordGame {
                 return;
             }
             Text.text = string.Empty;
+            Text.color = _originalFontColor;
             Background.color = _originalColor;
             CurrentTileType = TileType.Neutral;
         }
@@ -57,6 +60,9 @@ namespace WordGame {
             switch (tileType) {
                 case TileType.Wrong:
                     Background.color = GameManager.Instance.WrongColor;
+                    if (GameManager.Instance.UseWhiteFont) {
+                        Text.color = GameManager.Instance.WhiteFontColor;
+                    }
                     CurrentTileType = TileType.Wrong;
                     break;
                 case TileType.Right:
@@ -70,17 +76,26 @@ namespace WordGame {
             }
         }
 
+        /// <summary>
+        /// Receive letter color event
+        /// If applicable, color this tile and increment count in parent container
+        /// </summary>
+        /// <param name="letterColorEvent"></param>
         public void OnMMEvent(LetterColorEvent letterColorEvent) {
             if ((ParentContainer != null) && ParentContainer.CompareTag("CurrentWordContainer")) {
                 return;
             }
             if (letterColorEvent.key.Equals(Text.text, System.StringComparison.OrdinalIgnoreCase)) {
+                // If the tile is already colored, do nothing
                 if (letterColorEvent.tileType == CurrentTileType) {
                     return;
                 }
 
                 if (letterColorEvent.tileType == TileType.Wrong) {
                     Background.color = GameManager.Instance.WrongColor;
+                    if (GameManager.Instance.UseWhiteFont) {
+                        Text.color = GameManager.Instance.WhiteFontColor;
+                    }
                     CurrentTileType = TileType.Wrong;
                     if (ParentContainer != null) {
                         ParentContainer.IncrementWrongCount();
@@ -90,7 +105,7 @@ namespace WordGame {
                     Background.color = GameManager.Instance.RightColor;
                     CurrentTileType = TileType.Right;
                     if (ParentContainer != null) {
-                        ParentContainer.IncrementMarkedCount();
+                        ParentContainer.IncrementMarkedCorrectCount();
                     }
                 }
             }

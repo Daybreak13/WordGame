@@ -6,12 +6,13 @@ using System.Text;
 using MoreMountains.Tools;
 using UnityEngine.EventSystems;
 using System.IO;
-using System.Linq;
-using UnityEditor;
 using TMPro;
 using UnityEngine.InputSystem.XR;
 using System.ComponentModel;
 using UnityEngine.UI;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace WordGame {
 
@@ -21,7 +22,7 @@ namespace WordGame {
     /// <summary>
     /// Game manager
     /// </summary>
-    public class GameManager : Singleton<GameManager> {
+    public class GameManager : Singleton<GameManager>, MMEventListener<LetterColorEvent> {
         [field: Header("Game Parameters")]
 
         /// <summary>
@@ -63,6 +64,16 @@ namespace WordGame {
         /// </summary>
         [field: Tooltip("The color to use for correct letters")]
         [field: SerializeField] public Color RightColor { get; protected set; }
+        /// <summary>
+        /// If true, use white font for red tiles
+        /// </summary>
+        [field: Tooltip("If true, use white font for red tiles")]
+        [field: SerializeField] public bool UseWhiteFont { get; protected set; }
+        /// <summary>
+        /// The color font for red tiles
+        /// </summary>
+        [field: Tooltip("The color font for red tiles")]
+        [field: SerializeField] public Color WhiteFontColor { get; protected set; }
 
         [field: Header("Game Over")]
 
@@ -114,6 +125,11 @@ namespace WordGame {
         /// </summary>
         [field: Tooltip("The error message canvas group")]
         [field: SerializeField] public CanvasGroup ErrorMessageCanvasGroup { get; protected set; }
+        /// <summary>
+        /// Tutorial canvas group
+        /// </summary>
+        [field: Tooltip("Tutorial canvas group")]
+        [field: SerializeField] public CanvasGroup TutorialCanvasGroup { get; protected set; }
 
         [field: Header("Error Messages")]
 
@@ -150,6 +166,11 @@ namespace WordGame {
 
         [field: Header("Word Containers")]
 
+        /// <summary>
+        /// If true, change the word container score color if all letters are wrong or right
+        /// </summary>
+        [field: Tooltip("If true, change the word container score color if all letters are wrong or right")]
+        [field: SerializeField] public bool ChangeScoreColor { get; protected set; }
         /// <summary>
         /// The prefab for the word container
         /// </summary>
@@ -207,9 +228,13 @@ namespace WordGame {
         [field: Header("Debug")]
 
         /// If enabled, some info will be printed to console
-        [field: Tooltip("If enabled, some info will be printed to console")]
+        [field: Tooltip("Set to true to use proper pathing")]
+        [field: SerializeField] public bool UseAPKPaths { get; protected set; }
+        /// If enabled, do not set a new word at start. Also, some info will be printed to console.
+        [field: Tooltip("If enabled, do not set a new word at start. Also, some info will be printed to console.")]
         [field: SerializeField] public bool DebugMode { get; protected set; }
 
+        /// Dictionary of all Keyboard buttons (KBC)
         public Dictionary<string, KeyboardButtonController> KeyboardDictionary { get; protected set; } = new();
         public bool GameRunning { get; protected set; } = true;
 
@@ -218,10 +243,13 @@ namespace WordGame {
 
         protected StringBuilder _sb = new();
         protected StringBuilder _guessesSb = new();
-        protected int _correctLetterCount;
+        protected List<string> _correctLetters = new();  // List of correctly guessed letters
+
+        protected int _correctLetterCount;  // Correct letters in current guess
         protected Stack<KeyboardButtonController> _letterStack = new();
         protected int _currentContainerIndex;
         protected Coroutine _errorCoroutine;
+        protected bool _gameWon;
 
         protected string _validWordsFilePath = "Assets/Word Game/Resources/ValidWordsList.txt";
         protected string _allWordsFilePath = "Assets/Word Game/Resources/AllWordsList.txt";
@@ -236,20 +264,22 @@ namespace WordGame {
         protected virtual void Initialization() {
             EventSystem.current.sendNavigationEvents = true;
 
-            //_validWordsFilePath = Application.dataPath + "/Word Game/Resources/ValidWordsList.txt";
-            //_allWordsFilePath = Application.dataPath + "/Word Game/Resources/AllWordsList.txt";
-            _validWordsFilePath = Application.dataPath + "/Word Game/Resources/" + ValidWordsFileName;
-            _allWordsFilePath = Application.dataPath + "/Word Game/Resources/" + AllWordsFileName;
+            _validWordsFilePath = ValidWordsFileName;
+            _allWordsFilePath = AllWordsFileName;
+            //_validWordsFilePath = Application.dataPath + "/Word Game/Resources/" + ValidWordsFileName;
+            //_allWordsFilePath = Application.dataPath + "/Word Game/Resources/" + AllWordsFileName;
 
             GetWordLists();
 
             foreach (string word in AllWordsList) {
-                AllWordsDictionary.Add(word, word);
+                string newWord = word.ToUpper();
+                AllWordsDictionary.Add(newWord, newWord);
             }
 
             foreach (string word in ValidWordsList) {
-                PromptWordsDictionary.TryAdd(word, word);
-                AllWordsDictionary.TryAdd(word, word);
+                string newWord = word.ToUpper();
+                PromptWordsDictionary.TryAdd(newWord, newWord);
+                AllWordsDictionary.TryAdd(newWord, newWord);
             }
 
             if (ErrorMessageCanvasGroup == null) {
@@ -267,6 +297,13 @@ namespace WordGame {
                 KeyboardDictionary.Add(controller.Key, controller);
             }
 
+            //CurrentWordContainer.SetScore(0);
+            CurrentWordContainer.ScoreText.text = string.Empty;
+            foreach (LetterTile tile in CurrentWordContainer.Tiles) {
+                tile.Text.text = string.Empty;
+            }
+
+            SystemCanvas.SetActive(false);
             GameOverCanvasGroup.gameObject.SetActive(false);
 
             CurrentGuessesText.text = BuildCurrentGuessesText(0);
@@ -280,19 +317,29 @@ namespace WordGame {
         /// Get the list of valid words from a text file, as well as all words dictionary
         /// </summary>
         public virtual void GetWordLists() {
-            if (File.Exists(_validWordsFilePath)) {
-                string[] lines = File.ReadAllLines(_validWordsFilePath);
+            TextAsset validWords = Resources.Load<TextAsset>(_validWordsFilePath);
+            if (validWords != null) {
+                string[] lines = validWords.text.Split("\n");
                 foreach (string line in lines) {
-                    ValidWordsList.Add(line);
+                    ValidWordsList.Add(line.Trim().ToUpper());
                 }
             }
-            if (File.Exists(_allWordsFilePath)) {
-                string[] lines = File.ReadAllLines(_allWordsFilePath);
+            else {
+                Debug.Log("Failed to load valid words");
+            }
+            TextAsset allWords = Resources.Load<TextAsset>(_allWordsFilePath);
+            if (allWords != null) {
+                string[] lines = allWords.text.Split("\n");
                 foreach (string line in lines) {
-                    AllWordsList.Add(line);
+                    AllWordsList.Add(line.Trim().ToUpper());
                 }
+            }
+            else {
+                Debug.Log("Failed to load all words");
             }
         }
+
+#if UNITY_EDITOR
 
         /// <summary>
         /// Set keyboard button settings
@@ -301,10 +348,23 @@ namespace WordGame {
         public virtual void SetKeyboardButtons() {
             foreach (KeyboardButtonController controller in KeyboardList) {
                 controller.SetKey();
-                EditorUtility.SetDirty(controller);
-                EditorUtility.SetDirty(controller.Text);
+                //EditorUtility.SetDirty(controller);
+                //EditorUtility.SetDirty(controller.Text);
             }
         }
+
+        /// <summary>
+        /// Set names of keyboard button gameobjects
+        /// Called via inspector button
+        /// </summary>
+        public virtual void SetKeyboardButtonName() {
+            foreach (KeyboardButtonController controller in KeyboardList) {
+                controller.gameObject.name = controller.Key;
+                //EditorUtility.SetDirty(controller);
+            }
+        }
+
+#endif
 
         /// <summary>
         /// Get word containers
@@ -314,21 +374,23 @@ namespace WordGame {
             foreach (Transform child in WordContainerContent.transform) {
                 PreviousWordContainers.Add(child.GetComponent<WordContainer>());
             }
-            EditorUtility.SetDirty(this);
+            //EditorUtility.SetDirty(this);
         }
 
         /// <summary>
         /// Sets the font of every TextMeshProUGUI element in the scene
         /// </summary>
-        public virtual void SetFont() {
+        public virtual TextMeshProUGUI[] SetFont() {
             TextMeshProUGUI[] tmps = FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (TextMeshProUGUI tmp in tmps) {
                 tmp.font = TextFont;
             }
+            return tmps;
         }
 
         /// <summary>
         /// Populates list of keyboard buttons
+        /// Used in Editor via inspector button
         /// </summary>
         public virtual void PopulateKeyboardList() {
             KeyboardList.Clear();
@@ -336,24 +398,31 @@ namespace WordGame {
             foreach (GameObject item in arr) {
                 KeyboardButtonController controller = item.GetComponent<KeyboardButtonController>();
                 KeyboardList.Add(controller);
-                //KeyboardDictionary.Add(controller.Key, controller);
             }
-            EditorUtility.SetDirty(this);
+            //EditorUtility.SetDirty(this);
         }
 
         /// <summary>
         /// Called when a keyboard button is pressed
+        /// The KBC component of a button will call this method when the button is pressed with a click
+        /// Otherwise, InputManager reads a keyboard press and passes it to the GameManager
         /// </summary>
         /// <param name="key"></param>
         public virtual void PressKey(string key, KeyboardButtonController controller) {
-            if (!GameRunning) {
+            if (GameOverCanvasGroup.isActiveAndEnabled) {
+                if (key.Equals("ENT")) {
+                    ContinuePressed();
+                }
                 return;
             }
-            if (key.Equals("ENT")) {
+            if (key.Equals("ENT") || key.Equals("SUBMIT")) {
                 EnterPressed();
             }
             else if (key.Equals("DEL")) {
                 DeletePressed();
+            }
+            else if (key.Equals("MENU")) {
+                OpenMenu();
             }
             else {
                 if (_sb.Length < CurrentWordLength) {
@@ -364,11 +433,54 @@ namespace WordGame {
                         return;
                     }
                     controller.DisableKey();
-                    _sb.Append(key.ToLower());
+                    _sb.Append(key);
                     _letterStack.Push(controller);
                     CurrentWordContainer.AddLetter(key);
                 }
             }
+        }
+
+        /// <summary>
+        /// Opens up the menu
+        /// </summary>
+        public virtual void OpenMenu() {
+            GameRunning = false;
+            SystemCanvas.SetActive(true);
+        }
+
+        public virtual void CloseMenu() {
+            GameRunning = true;
+            SystemCanvas.SetActive(false);
+
+        }
+
+        /// <summary>
+        /// Toggles the tutorial page
+        /// </summary>
+        public virtual void ToggleTutorial() {
+            TutorialCanvasGroup.gameObject.SetActive(!TutorialCanvasGroup.gameObject.activeSelf);
+        }
+
+        /// <summary>
+        /// Player manually triggers a game over
+        /// </summary>
+        public virtual void GiveUp() {
+            SystemCanvas.SetActive(false);
+            GameOver(false);
+        }
+
+        /// <summary>
+        /// DEL (delete) key pressed
+        /// Delete the last entered letter
+        /// </summary>
+        protected virtual void DeletePressed() {
+            if (_sb.Length == 0) {
+                return;
+            }
+            _sb.Remove(_sb.Length - 1, 1);
+            KeyboardButtonController controller = _letterStack.Pop();
+            controller.EnableKey();
+            CurrentWordContainer.RemoveLetter();
         }
 
         /// <summary>
@@ -396,35 +508,19 @@ namespace WordGame {
 
             // If it is the solution, win the game and return
             if (CurrentWord.Equals(word, System.StringComparison.OrdinalIgnoreCase)) {
-                CurrentGuessesText.text = BuildCurrentGuessesText(++CurrentGuesses);
+                CurrentGuessesText.text = BuildCurrentGuessesText(CurrentGuesses);
                 foreach (char c in word) {
                     LetterColorEvent.Trigger(c.ToString(), TileType.Right);
                 }
-                GameOver(true);
-                return;
+                _gameWon = true;
+                //GameOver(true);
+                //return;
             }
 
             // Valid non-solution word entered
             ValidWordEntered(word);
-        }
 
-        /// <summary>
-        /// Opens up the menu
-        /// </summary>
-        public virtual void OpenMenu() {
-            SystemCanvas.SetActive(true);
-        }
-
-        public virtual void CloseMenu() {
-            SystemCanvas.SetActive(false);
-
-        }
-
-        /// <summary>
-        /// Player manually triggers a game over
-        /// </summary>
-        public virtual void GiveUp() {
-            GameOver(false);
+            if (_gameWon) GameOver(true);
         }
 
         /// <summary>
@@ -434,7 +530,35 @@ namespace WordGame {
             PreviousWordContainers[_currentContainerIndex].gameObject.SetActive(true);
             PreviousWordContainers[_currentContainerIndex].SetScore(_correctLetterCount);
 
-            StartCoroutine(InitializePreviousWordContainerCo(_currentContainerIndex));
+            //StartCoroutine(InitializePreviousWordContainerCo(_currentContainerIndex));
+
+            StringBuilder sb = new();
+            string str;
+            foreach (LetterTile tile in CurrentWordContainer.Tiles) {
+                sb.Append(tile.Text.text);
+            }
+            str = sb.ToString();
+
+            int wrongCount = 0;
+            int markedCount = 0;
+            for (int i = 0; i < CurrentWordLength; i++) {
+                string txt = str[i].ToString();   // Current letter
+                PreviousWordContainers[_currentContainerIndex].Tiles[i].Text.text = txt;
+
+                // Color the tiles of the new word container (if applicable)
+                PreviousWordContainers[_currentContainerIndex].AddTile(txt, KeyboardDictionary[txt].CurrentTileType);
+                if (KeyboardDictionary[txt].CurrentTileType == TileType.Wrong) {
+                    wrongCount++;
+                }
+                if (KeyboardDictionary[txt].CurrentTileType == TileType.Right) {
+                    markedCount++;
+                }
+            }
+
+            PreviousWordContainers[_currentContainerIndex].IncrementWrongCount(wrongCount);
+            PreviousWordContainers[_currentContainerIndex].IncrementMarkedCorrectCount(markedCount);
+
+            _currentContainerIndex++;
         }
 
         /// <summary>
@@ -445,7 +569,7 @@ namespace WordGame {
         protected virtual IEnumerator InitializePreviousWordContainerCo(int idx) {
             StringBuilder sb = new();
             string str;
-            foreach(LetterTile tile in CurrentWordContainer.Tiles) {
+            foreach (LetterTile tile in CurrentWordContainer.Tiles) {
                 sb.Append(tile.Text.text);
             }
             str = sb.ToString();
@@ -457,36 +581,109 @@ namespace WordGame {
             for (int i = 0; i < CurrentWordLength; i++) {
                 string txt = str[i].ToString();   // Current letter
                 PreviousWordContainers[_currentContainerIndex].Tiles[i].Text.text = txt;
-                // Color the tile of the new word (if applicable)
+
+                // Color the tiles of the new word container (if applicable)
                 PreviousWordContainers[_currentContainerIndex].AddTile(txt, KeyboardDictionary[txt].CurrentTileType);
                 if (KeyboardDictionary[txt].CurrentTileType == TileType.Wrong) {
-                    //PreviousWordContainers[_currentContainerIndex].IncrementWrongCount();
                     wrongCount++;
                 }
                 if (KeyboardDictionary[txt].CurrentTileType == TileType.Right) {
-                    //PreviousWordContainers[_currentContainerIndex].IncrementMarkedCount();
                     markedCount++;
                 }
             }
 
             PreviousWordContainers[_currentContainerIndex].IncrementWrongCount(wrongCount);
-            PreviousWordContainers[_currentContainerIndex].IncrementMarkedCount(markedCount);
+            PreviousWordContainers[_currentContainerIndex].IncrementMarkedCorrectCount(markedCount);
 
             _currentContainerIndex++;
         }
 
         /// <summary>
-        /// DEL (delete) key pressed
-        /// Delete the last entered letter
+        /// When a valid word is entered
         /// </summary>
-        protected virtual void DeletePressed() {
-            if (_sb.Length == 0) {
-                return;
+        /// <param name="word"></param>
+        protected virtual void ValidWordEntered(string word) {
+            PreviousWordList.Add(word);
+
+            // Valid non-solution word was entered
+            // Check the word for same characters as the solution
+            foreach (char c in word) {
+                // string s = c.ToString().ToUpper();
+                if (CurrentWord.Contains(c)) {      //  || CurrentWord.Contains(s)
+                    _correctLetterCount++;
+                }
             }
-            _sb.Remove(_sb.Length - 1, 1);
-            KeyboardButtonController controller = _letterStack.Pop();
-            controller.EnableKey();
-            CurrentWordContainer.RemoveLetter();
+
+            InitializePreviousWordContainer();
+
+            // If all characters are wrong, color the tiles as the wrong color
+            if (_correctLetterCount == 0) {
+                foreach (char c in word) {
+                    LetterColorEvent.Trigger(c.ToString(), TileType.Wrong);
+                }
+            }
+            // If all characters are correct, color the tiles as right color
+            if (_correctLetterCount == 4) {
+                foreach (char c in word) {
+                    LetterColorEvent.Trigger(c.ToString(), TileType.Right);
+                }
+            }
+
+            CalculatePrevious(word);
+
+            CurrentWordContainer.ResetContainer();
+
+            ResetKeyboard(false);
+
+            CurrentGuessesText.text = BuildCurrentGuessesText(++CurrentGuesses);
+            StartCoroutine(ForceScrollDown());
+
+            // If we have exceeded max guesses, trigger game over
+            if (CurrentGuesses == MaxGuesses && !_gameWon) {
+                GameOver(false);
+            }
+
+            _correctLetterCount = 0;
+        }
+
+        /// <summary>
+        /// Go back to each previous word to determine if the newly inputted word allows us to mark any tiles
+        /// </summary>
+        protected virtual void CalculatePrevious(string word) {
+            foreach (WordContainer container in PreviousWordContainers) {
+                // Once we've hit the first inactive container, we're done
+                if (!container.gameObject.activeSelf) {
+                    break;
+                }
+                int diff = _correctLetterCount - container.CorrectLetterCount;
+                HashSet<char> set1 = new(word);
+                HashSet<char> set2 = new(container.StoredWord);
+                set1.SymmetricExceptWith(set2);
+
+                TileType t = (diff > 0) ? TileType.Right : TileType.Wrong;
+                TileType t2 = (t == TileType.Right) ? TileType.Wrong : TileType.Right;
+                // If the number of letters swapped out equals the change in score
+                if (set1.Count / 2 == Mathf.Abs(diff)) {
+                    foreach (char c in set1) {
+                        if (word.Contains(c)) {
+                            LetterColorEvent.Trigger(c.ToString(), t);
+                        }
+                        else {
+                            LetterColorEvent.Trigger(c.ToString(), t2);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forces the scroller to the bottom of the content
+        /// </summary>
+        /// <returns></returns>
+        protected virtual IEnumerator ForceScrollDown() {
+            yield return new WaitForEndOfFrame();
+            Scroller.verticalNormalizedPosition = 0f;
+            Canvas.ForceUpdateCanvases();
         }
 
         /// <summary>
@@ -538,79 +735,28 @@ namespace WordGame {
         }
 
         /// <summary>
-        /// When a valid word is entered
+        /// Re-enables stacked keys in the keyboard
         /// </summary>
-        /// <param name="word"></param>
-        protected virtual void ValidWordEntered(string word) {
-            PreviousWordList.Add(word);
-
-            // Valid non-solution word was entered
-            // Check the word for same characters as the solution
-            foreach (char c in word) {
-                string s = c.ToString().ToUpper();
-                if (CurrentWord.Contains(c) || CurrentWord.Contains(s)) {
-                    _correctLetterCount++;
-                    //LetterPressEvent.Trigger(c.ToString(), TileType.Right);
-                }
-                else {
-                    //LetterPressEvent.Trigger(c.ToString(), TileType.Wrong);
-                }
-            }
-
-            InitializePreviousWordContainer();
-
-            // If all characters are wrong, color the tiles as the wrong color
-            if (_correctLetterCount == 0) {
-                foreach (char c in word) {
-                    LetterColorEvent.Trigger(c.ToString(), TileType.Wrong);
-                }
-            }
-            if (_correctLetterCount == 4) {
-                foreach (char c in word) {
-                    LetterColorEvent.Trigger(c.ToString(), TileType.Right);
-                }
-            }
-
-            //CurrentWordContainer.ScoreText.text = _correctLetterCount.ToString();
-            CurrentWordContainer.ResetContainer();
-
-            ResetKeyboard(false);
-
-            CurrentGuessesText.text = BuildCurrentGuessesText(++CurrentGuesses);
-            StartCoroutine(ForceScrollDown());
-
-            // If we have exceeded max guesses, trigger game over
-            if (CurrentGuesses == MaxGuesses) {
-                GameOver(false);
-            }
-
-            _correctLetterCount = 0;
-        }
-
-        /// <summary>
-        /// Forces the scroller to the bottom of the content
-        /// </summary>
-        /// <returns></returns>
-        protected virtual IEnumerator ForceScrollDown() {
-            yield return new WaitForEndOfFrame();
-            Canvas.ForceUpdateCanvases();
-            Scroller.verticalNormalizedPosition = 0f;
-            Canvas.ForceUpdateCanvases();
-        }
-
-        /// <summary>
-        /// Re-enables all keys in the keyboard
-        /// If true, also reset the keys (color, etc)
-        /// </summary>
-        protected virtual void ResetKeyboard(bool resetKeys) {
+        /// <param name="resetAll">If true, reset all keys (active state, color, tile type)</param>
+        protected virtual void ResetKeyboard(bool resetAll) {
             _sb.Clear();
-            while (_letterStack.Count > 0) {
-                KeyboardButtonController controller = _letterStack.Pop();
-                controller.EnableKey();
+
+            // If the correct letter count is max, it means we are enabling only correct letters
+            // Otherwise, we can reset the keyboard
+            if (_correctLetters.Count == CurrentWordLength) {
+                return;
             }
-            if (resetKeys) {
+            
+            if (resetAll) {
                 foreach (KeyboardButtonController controller in KeyboardList) {
                     controller.ResetKey();
+                }
+                _letterStack.Clear();
+            }
+            else {
+                while (_letterStack.Count > 0) {
+                    KeyboardButtonController controller = _letterStack.Pop();
+                    controller.EnableKey();
                 }
             }
         }
@@ -637,7 +783,9 @@ namespace WordGame {
             CurrentGuessesText.text = BuildCurrentGuessesText(0);
 
             _currentContainerIndex = 0;
+            _gameWon = false;
             CurrentWordContainer.ResetContainer();
+            _correctLetters.Clear();
             SetNewWord();
             ResetKeyboard(true);
         }
@@ -650,7 +798,16 @@ namespace WordGame {
         protected virtual void GameOver(bool won) {
             EventSystem.current.SetSelectedGameObject(null);
 
-            AttemptsText.text = AttemptsText.text.Remove(0, 1).Insert(0, CurrentGuesses.ToString());
+            _sb.Clear();
+            _sb.Append(CurrentGuesses.ToString());
+            if (CurrentGuesses == 1) {
+                _sb.Append(" attempt");
+            }
+            else {
+                _sb.Append(" attempts");
+            }
+            AttemptsText.text = _sb.ToString();
+            //AttemptsText.text = AttemptsText.text.Remove(0, 1).Insert(0, CurrentGuesses.ToString());
             SolutionText.text = CurrentWord.ToUpper();
             GameOverCanvasGroup.gameObject.SetActive(true);
             GameOverCanvasGroup.gameObject.SetActive(true);
@@ -671,8 +828,12 @@ namespace WordGame {
         /// Gets and sets up a new word to guess
         /// </summary>
         protected virtual void SetNewWord() {
-            int idx = Random.Range(0, ValidWordsList.Count);
-            CurrentWord = ValidWordsList[idx];
+            string newWord = CurrentWord;
+            while (newWord.Equals(CurrentWord, System.StringComparison.OrdinalIgnoreCase)) {
+                int idx = Random.Range(0, ValidWordsList.Count);
+                newWord = ValidWordsList[idx];
+            }
+            CurrentWord = newWord;
         }
 
         /// <summary>
@@ -683,7 +844,50 @@ namespace WordGame {
             _guessesSb.Append((currentGuesses).ToString());
             _guessesSb.Append("/");
             _guessesSb.Append(MaxGuesses.ToString());
+            _guessesSb.Append(" ");
+            _guessesSb.Append("ATTEMPTS");
             return _guessesSb.ToString();
+        }
+
+        /// <summary>
+        /// Disable all keys in the keyboard except for the ones that have correct letters
+        /// </summary>
+        protected virtual void SetOnlyCorrectKeyboard() {
+            foreach (KeyboardButtonController kbc in KeyboardList) {
+                if (kbc.Key.Length == 1 && !_correctLetters.Contains(kbc.Key)) {
+                    kbc.DisableKey();
+                }
+                else if (kbc.Key.Length == 1) {
+                    kbc.EnableKey();
+                }
+            }
+        }
+
+        /// <summary>
+        /// On letter color event, append to our correct letter list (if applicable)
+        /// </summary>
+        /// <param name="letterColorEvent"></param>
+        public void OnMMEvent(LetterColorEvent letterColorEvent) {
+            if ((letterColorEvent.tileType == TileType.Right) && !_correctLetters.Contains(letterColorEvent.key)) {
+                _correctLetters.Add(letterColorEvent.key);
+            }
+            // If we've marked every correct letter, enable only the correct keys
+            if (_correctLetters.Count == CurrentWordLength) {
+                SetOnlyCorrectKeyboard();
+            }
+        }
+
+        protected virtual void OnEnable() {
+            this.MMEventStartListening<LetterColorEvent>();
+        }
+
+        protected virtual void OnDisable() {
+            this.MMEventStopListening<LetterColorEvent>();
+            StopAllCoroutines();
+        }
+
+        protected virtual void OnDestroy() {
+            StopAllCoroutines();
         }
 
     }

@@ -6,7 +6,10 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Word Game/Scenes/MainScene.unity
-    guid: 2cda990e2423bbf4892e6590ba056729
+    path: Assets/Word Game/Scenes/MainMenuMobile.unity
+    guid: 802e2847471c9b248b5ab3942e9862a6
+  - enabled: 1
+    path: Assets/Word Game/Scenes/MainSceneMobile.unity
+    guid: 9cc30681032d3f446905725abed67bc2
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 883ef03e1a98a584dbb711a6d268a804, type: 2}

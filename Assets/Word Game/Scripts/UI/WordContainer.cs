@@ -30,10 +30,14 @@ namespace WordGame {
         [field: Tooltip("List of letter tiles for this word")]
         [field: SerializeField] public List<LetterTile> Tiles { get; protected set; } = new();
 
+        public string StoredWord { get; protected set; }
+        public int CorrectLetterCount { get; protected set; }
+
+        protected StringBuilder _sb = new();
         protected int _currentIndex;
-        protected int _correctLetterCount;
         protected int _wrongLetterCount;
         protected int _markedCorrectCount;
+        protected Color _neutralColor;
 
         protected virtual void Awake() {
             Initialize();
@@ -47,6 +51,7 @@ namespace WordGame {
             foreach (LetterTile tile in Tiles) {
                 tile.SetParent(this);
             }
+            _neutralColor = ScoreImage.color;
         }
 
         /// <summary>
@@ -56,20 +61,34 @@ namespace WordGame {
             foreach (LetterTile tile in Tiles) {
                 tile.ResetTile();
             }
+            _sb.Clear();
+            StoredWord = string.Empty;
             ScoreText.text = string.Empty;
+            ScoreImage.color = _neutralColor;
             _currentIndex = 0;
-            _correctLetterCount = 0;
+            CorrectLetterCount = 0;
             _wrongLetterCount = 0;
             _markedCorrectCount = 0;
         }
 
         /// <summary>
         /// Set the score (used when activating container)
+        /// Change score image color (if applicable)
         /// </summary>
         /// <param name="score"></param>
         public virtual void SetScore(int score) {
             ScoreText.text = score.ToString();
-            _correctLetterCount = score;
+            CorrectLetterCount = score;
+
+            if (!GameManager.Instance.ChangeScoreColor) {
+                return;
+            }
+            if (score == GameManager.Instance.CurrentWordLength) {
+                ScoreImage.color = GameManager.Instance.RightColor;
+            }
+            if (score == 0) {
+                ScoreImage.color = GameManager.Instance.WrongColor;
+            }
         }
 
         /// <summary>
@@ -83,6 +102,7 @@ namespace WordGame {
         
         /// <summary>
         /// Used by previous word containers when GameManager sets them for the first time
+        /// Sets the tile text and tile type
         /// </summary>
         /// <param name="letter"></param>
         /// <param name="tileType"></param>
@@ -90,6 +110,12 @@ namespace WordGame {
             Tiles[_currentIndex].Text.text = letter;
             Tiles[_currentIndex].SetTile(letter, tileType);
             _currentIndex++;
+            if (!CompareTag("CurrentWordContainer")) {
+                _sb.Append(letter);
+                if (_currentIndex == GameManager.Instance.CurrentWordLength) {
+                    StoredWord = _sb.ToString();
+                }
+            }
         }
 
         /// <summary>
@@ -106,14 +132,14 @@ namespace WordGame {
         /// </summary>
         public virtual void IncrementWrongCount(int increment = 1) {
             _wrongLetterCount += increment;
-            if (_wrongLetterCount + _correctLetterCount == GameManager.Instance.CurrentWordLength) {
+            if (_wrongLetterCount + CorrectLetterCount == GameManager.Instance.CurrentWordLength) {
                 foreach (LetterTile tile in Tiles) {
                     if (tile.CurrentTileType == TileType.Neutral) {
                         LetterColorEvent.Trigger(tile.Text.text, TileType.Right);
                     }
                 }
 
-                if (_markedCorrectCount == _correctLetterCount) {
+                if (_markedCorrectCount == CorrectLetterCount) {
                     foreach (LetterTile tile in Tiles) {
                         if (tile.CurrentTileType == TileType.Neutral) {
                             LetterColorEvent.Trigger(tile.Text.text, TileType.Wrong);
@@ -128,20 +154,15 @@ namespace WordGame {
         /// If marked correct count = the actual correct count, we know the rest of the tiles are wrong
         /// So mark the rest as wrong
         /// </summary>
-        public virtual void IncrementMarkedCount(int increment = 1) {
+        public virtual void IncrementMarkedCorrectCount(int increment = 1) {
             _markedCorrectCount += increment;
-            if (_markedCorrectCount == _correctLetterCount) {
+            if (_markedCorrectCount == CorrectLetterCount) {
                 foreach (LetterTile tile in Tiles) {
                     if (tile.CurrentTileType == TileType.Neutral) {
                         LetterColorEvent.Trigger(tile.Text.text, TileType.Wrong);
                     }
                 }
             }
-        }
-
-        protected virtual IEnumerator LetterPressCo(string letter) {
-            yield return new WaitForEndOfFrame();
-
         }
 
         /// <summary>
